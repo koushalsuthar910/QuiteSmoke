@@ -46,3 +46,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+
+
+export async function DELETE(req: Request) {
+  try {
+    const user = await requireUser();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+    // Verify ownership — user can only delete their own events
+    const event = await prisma.smokingEvent.findUnique({ where: { id } });
+    if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    if (event.userId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await prisma.smokingEvent.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    if (e?.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Server error', detail: e?.message }, { status: 500 });
+  }
+}
