@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  profile      Profile?
+  sessions     QuitSession[]
+  events       SmokingEvent[]
+}
+
+model Profile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String?
+  age               Int?
+  sex               String?
+  cigarettesPerDay  Int      @default(20)
+  packPrice         Float    @default(200)
+  cigarettesPerPack Int      @default(20)
+  currency          String   @default("INR")
+  absorptionFactor  Float    @default(0.7)
+  defaultProductId  String?
+  smokingYears      Int?
+  goal              String   @default("quit_completely")
+  quitStartedAt     DateTime @default(now())
+  onboardingDone    Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
+}
+
+model CigaretteProduct {
+  id                 String         @id @default(cuid())
+  brand              String
+  productName        String
+  nicotine_mg        Float?
+  tar_mg             Float?
+  carbon_monoxide_mg Float?
+  cigarettesPerPack  Int            @default(20)
+  packPrice          Float
+  market             String         @default("IN")
+  source             String?
+  isEstimated        Boolean        @default(true)
+  events             SmokingEvent[]
+
+  @@index([brand])
+}
+
+model QuitSession {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt DateTime       @default(now())
+  endedAt   DateTime?
+  endReason String?
+  events    SmokingEvent[]
+
+  @@index([userId, startedAt])
+}
+
+model SmokingEvent {
+  id                 String           @id @default(cuid())
+  userId             String
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId          String
+  session            QuitSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  productId          String
+  product            CigaretteProduct @relation(fields: [productId], references: [id])
+  quantity           Int              @default(1)
+  smokedAt           DateTime
+  nicotineMg         Float?
+  tarMg              Float?
+  coMg               Float?
+  absorbedNicotineMg Float?
+  cost               Float
+  trigger            String?
+  notes              String?
+  createdAt          DateTime         @default(now())
+
+  @@index([userId, smokedAt])
+}
